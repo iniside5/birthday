@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Für dich 💌</title>
+<style>
+  /* ============================================================
+     FARBEN & RESET
+     ============================================================ */
+  :root {
+    --bg-dark: #0d0b1a;
+    --bg-warm: #fff5e6;
+    --accent: #ff6b9d;
+    --accent2: #c084fc;
+    --text-dark: #1a1a1a;
+    --text-light: #f5f5f5;
+    --paper: #faf3e0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Georgia', serif; }
+  body { background: var(--bg-dark); color: var(--text-light); }
+
+  /* ============================================================
+     STAGE-WRAPPER (alle Screens übereinander)
+     ============================================================ */
+  .stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1.2s ease;
+  }
+  .screen.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ============================================================
+     SCREEN 1 — LOADING
+     ============================================================ */
+  #loading {
+    background: var(--bg-dark);
+  }
+  #loading h1 {
+    font-size: 1.4rem;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    margin-bottom: 2.5rem;
+    color: var(--text-light);
+    text-align: center;
+    padding: 0 1.5rem;
+  }
+  .countdown-banner {
+    margin: 0 1.5rem;
+    padding: 2rem 1.2rem;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    text-align: center;
+    max-width: 520px;
+    width: 100%;
+  }
+  .countdown-label {
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+  .countdown-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.8rem;
+  }
+  .countdown-cell {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 1rem 0.3rem;
+  }
+  .countdown-num {
+    font-size: 2.6rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .countdown-unit {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 0.5rem;
+  }
+  .countdown-revealed {
+    margin-top: 2rem;
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.5);
+    font-style: italic;
+  }
+  .countdown-revealed.hidden { display: none; }
+  .countdown-tagline {
+    margin-top: 1.5rem;
+    min-height: 1.5em;
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.55);
+    font-style: italic;
+    letter-spacing: 0.02em;
+    text-align: center;
+    transition: opacity 0.5s ease;
+  }
+  .countdown-tagline.hidden { opacity: 0; }
+  .countdown-live {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #4ade80;
+    margin-left: 0.4rem;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .progress-track {
+    width: 280px;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+  .status-msg {
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.6);
+    font-style: italic;
+    min-height: 1.5em;
+    text-align: center;
+    padding: 0 1.5rem;
+  }
+
+  /* ============================================================
+     SCREEN 2 — BRIEF (mit Umschlag-Animation)
+     ============================================================ */
+  #letter-screen {
+    background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 50%, #fd79a8 100%);
+  }
+  .envelope {
+    width: 320px;
+    height: 200px;
+    background: #c44569;
+    position: relative;
+    cursor: pointer;
+    border-radius: 6px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    transition: transform 0.3s ease;
+  }
+  .envelope:hover { transform: scale(1.03); }
+  .envelope::before {
+    /* Umschlag-Deckel (geschlossen) */
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 0; height: 0;
+    border-left: 160px solid transparent;
+    border-right: 160px solid transparent;
+    border-top: 110px solid #b33951;
+    transform-origin: top;
+    transition: transform 0.8s ease;
+    z-index: 2;
+  }
+  .envelope.opened::before {
+    transform: rotateX(180deg);
+  }
+  .envelope-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff5e6;
+    font-size: 1.1rem;
+    letter-spacing: 0.1em;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .hint {
+    margin-top: 2rem;
+    color: rgba(255,255,255,0.8);
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+  }
+
+  /* Der Brief zum Rausklappen */
+  .letter-paper {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.5);
+    width: min(90vw, 520px);
+    max-height: 80vh;
+    background: var(--paper);
+    color: var(--text-dark);
+    padding: 3rem 2.5rem;
+    border-radius: 4px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    opacity: 0;
+    pointer-events: none;
+    overflow-y: auto;
+    transition: opacity 1s ease 0.8s, transform 0.8s ease 0.8s;
+    z-index: 3;
+  }
+  .letter-paper.visible {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
+  }
+  .letter-paper p {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    margin-bottom: 1.2rem;
+    text-align: left;
+  }
+  .letter-paper .signature {
+    margin-top: 2rem;
+    text-align: right;
+    font-style: italic;
+    color: var(--accent);
+  }
+  .letter-paper .next-btn {
+    display: block;
+    margin: 2.5rem auto 0.5rem;
+    padding: 0.8rem 2rem;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-size: 1rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .letter-paper .next-btn:hover {
+    transform: scale(1.05);
+    background: #e85a8a;
+  }
+
+  /* ============================================================
+     SCREEN 3 — "NOCH NICHT ZU ENDE"
+     ============================================================ */
+  #not-done {
+    background: var(--bg-dark);
+  }
+  #not-done h2 {
+    font-size: 2.2rem;
+    font-weight: 300;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    padding: 0 1.5rem;
+  }
+  #not-done p {
+    color: rgba(255,255,255,0.7);
+    font-size: 1.1rem;
+    margin-bottom: 3rem;
+    text-align: center;
+    padding: 0 1.5rem;
+  }
+  .game-launch-btn {
+    padding: 1.2rem 3rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white;
+    border: none;
+    border-radius: 40px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 0.05em;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 10px 30px rgba(255,107,157,0.3);
+  }
+  .game-launch-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 15px 40px rgba(255,107,157,0.5);
+  }
+
+  /* ============================================================
+     SCREEN 4 — MEMORY
+     ============================================================ */
+  #memory {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    flex-direction: column;
+    padding: 2rem 1rem;
+  }
+  .memory-title {
+    font-size: 1.6rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-light);
+    text-align: center;
+  }
+  .memory-sub {
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+  }
+  .stats {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    color: var(--accent);
+    font-size: 0.95rem;
+  }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.6rem;
+    max-width: 460px;
+    width: 100%;
+    aspect-ratio: 1;
+  }
+  .card {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transition: transform 0.6s;
+  }
+  .card.flipped {
+    transform: rotateY(180deg);
+  }
+  .card .face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    backface-visibility: hidden;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 0.3rem;
+    word-break: break-word;
+    overflow: hidden;
+  }
+  .card .back {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white;
+    font-size: 1.5rem;
+  }
+  .card .front {
+    background: var(--paper);
+    color: var(--text-dark);
+    transform: rotateY(180deg);
+    font-weight: 500;
+    line-height: 1.2;
+  }
+  .card .front img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .card.matched .front {
+    background: linear-gradient(135deg, #a8e6cf, #88d8a3);
+  }
+  .card.matched .front::after {
+    content: '✓';
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    background: #1a4d2e;
+    color: white;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    z-index: 2;
+  }
+
+  /* ============================================================
+     SCREEN 5 — FINAL ENTHÜLLUNG (nach Memory-Sieg)
+     ============================================================ */
+  #finale {
+    background: linear-gradient(135deg, #ff6b9d 0%, #c084fc 50%, #6b9dff 100%);
+  }
+  .finale-content {
+    text-align: center;
+    padding: 2rem;
+    max-width: 600px;
+  }
+  .finale-content h2 {
+    font-size: 2.4rem;
+    margin-bottom: 1.5rem;
+    color: white;
+  }
+  .finale-content p {
+    font-size: 1.2rem;
+    color: white;
+    line-height: 1.6;
+    margin-bottom: 1.2rem;
+  }
+  .confetti {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    pointer-events: none;
+    animation: fall 3s linear forwards;
+  }
+  @keyframes fall {
+    to { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SCREEN 1: LOADING
+     ============================================================ -->
+<div class="stage">
+  <div id="loading" class="screen active">
+    <h1 id="loading-title">Etwas Großes kommt...</h1>
+
+    <div class="countdown-banner">
+      <div class="countdown-label">Noch bis zu deinem Tag<span class="countdown-live"></span></div>
+      <div class="countdown-grid">
+        <div class="countdown-cell">
+          <div class="countdown-num" id="cd-days">--</div>
+          <div class="countdown-unit">Tage</div>
+        </div>
+        <div class="countdown-cell">
+          <div class="countdown-num" id="cd-hours">--</div>
+          <div class="countdown-unit">Std</div>
+        </div>
+        <div class="countdown-cell">
+          <div class="countdown-num" id="cd-minutes">--</div>
+          <div class="countdown-unit">Min</div>
+        </div>
+        <div class="countdown-cell">
+          <div class="countdown-num" id="cd-seconds">--</div>
+          <div class="countdown-unit">Sek</div>
+        </div>
+      </div>
+      <div class="countdown-revealed hidden" id="countdown-revealed">
+        Klick irgendwo, um zu sehen was kommt 💝
+      </div>
+    </div>
+
+    <div class="countdown-tagline" id="countdown-tagline">Lade Überraschung...</div>
+  </div>
+
+  <!-- ============================================================
+       SCREEN 2: BRIEF
+       ============================================================ -->
+  <div id="letter-screen" class="screen">
+    <div class="envelope" id="envelope">
+      <div class="envelope-text">Für dich 💌</div>
+    </div>
+    <p class="hint" id="envelope-hint">Klick den Brief an</p>
+
+    <div class="letter-paper" id="letter-paper">
+      <p>Hey Schatz,</p>
+      <p>Ich wollte dir mal anders zum Geburtstag gratulieren, weswegen ich diese kleine Seite erstellt habe.</p>
+      <p>Die letzten 5 Jahre mit dir waren die besten meines Lebens. Ich genieße wirklich jeden Moment mit dir.</p>
+      <p>Ich hoffe, das hier bringt dich zum Lächeln.</p>
+      <p class="signature">In Liebe,<br>Dein Oliver</p>
+      <button class="next-btn" id="letter-next">Weiter →</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCREEN 3: "NOCH NICHT ZU ENDE"
+       ============================================================ -->
+  <div id="not-done" class="screen">
+    <h2>Das war's aber noch nicht...</h2>
+    <p>Eine letzte Überraschung wartet noch auf dich 🎁</p>
+    <button class="game-launch-btn" id="start-game">Memory starten</button>
+  </div>
+
+  <!-- ============================================================
+       SCREEN 4: MEMORY
+       ============================================================ -->
+  <div id="memory" class="screen">
+    <h2 class="memory-title">Finde alle Paare</h2>
+    <p class="memory-sub">Aus eurer gemeinsamen Zeit</p>
+    <div class="stats">
+      <div>Züge: <span id="moves">0</span></div>
+      <div>Paare: <span id="matched">0</span> / 8</div>
+    </div>
+    <div class="board" id="board"></div>
+  </div>
+
+  <!-- ============================================================
+       SCREEN 5: FINALE
+       ============================================================ -->
+  <div id="finale" class="screen">
+    <div class="finale-content">
+      <h2>Alles gefunden! 💕</h2>
+      <p>Du hast in <span id="final-moves">0</span> Zügen alle Paare gefunden.</p>
+      <p>Du bist echt die beste!💕</p>
+      <p style="margin-top:2rem;font-size:1.4rem;">Alles Gute zum Geburtstag mein Schatz 🎂</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ============================================================
+     MEMORY-KARTEN (8 Bilder, jedes Bild = 1 Paar = 2 Karten)
+
+     HIER KANNST DU ÄNDERN:
+     - Reihenfolge (die Positionen sind egal, Karten werden gemischt)
+     - Optional: caption-Text unter dem Bild (sonst leer lassen)
+     ============================================================ */
+  const cardPairs = [
+    { id: 1, img: "images/a.jpg", caption: "" },
+    { id: 2, img: "images/b.JPG", caption: "" },
+    { id: 3, img: "images/c.jpg", caption: "" },
+    { id: 4, img: "images/d.JPG", caption: "" },
+    { id: 5, img: "images/e.jpg", caption: "" },
+    { id: 6, img: "images/f.JPG", caption: "" },
+    { id: 7, img: "images/g.JPG", caption: "" },
+    { id: 8, img: "images/h.JPG", caption: "" },
+  ];
+
+  /* ============================================================
+     SCREEN-LOGIK
+     ============================================================ */
+  const screens = {
+    loading: document.getElementById('loading'),
+    letter: document.getElementById('letter-screen'),
+    notDone: document.getElementById('not-done'),
+    memory: document.getElementById('memory'),
+    finale: document.getElementById('finale'),
+  };
+
+  function showScreen(name) {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+  }
+
+  /* ============================================================
+     COUNTDOWN BIS 17.06 00:00
+
+     HIER ÄNDERN:
+     - targetDate: dein Ziel-Datum (lokale Zeitzone)
+       Monat 0=Jan, 1=Feb, ... 5=Juni, 11=Dez
+     ============================================================ */
+  const targetDate = new Date(2026, 5, 17, 0, 0, 0).getTime();
+
+  const cdDays = document.getElementById('cd-days');
+  const cdHours = document.getElementById('cd-hours');
+  const cdMinutes = document.getElementById('cd-minutes');
+  const cdSeconds = document.getElementById('cd-seconds');
+  const cdRevealed = document.getElementById('countdown-revealed');
+  const loadingScreen = document.getElementById('loading');
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  let targetReached = false;
+  let waitingForClick = false;
+
+  function updateCountdown() {
+    const now = Date.now();
+    let diff = targetDate - now;
+
+    if (diff <= 0) {
+      // Ziel-Datum erreicht
+      cdDays.textContent = '00';
+      cdHours.textContent = '00';
+      cdMinutes.textContent = '00';
+      cdSeconds.textContent = '00';
+
+      if (!targetReached) {
+        targetReached = true;
+        waitingForClick = true;
+        cdRevealed.classList.remove('hidden');
+        document.getElementById('loading-title').textContent = 'Heute ist dein Tag!';
+      }
+      return;
+    }
+
+    const totalSeconds = Math.floor(diff / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    cdDays.textContent = pad(days);
+    cdHours.textContent = pad(hours);
+    cdMinutes.textContent = pad(minutes);
+    cdSeconds.textContent = pad(seconds);
+  }
+
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+
+  // Klick irgendwo auf Loading-Screen: nur aktiv nach Mitternacht
+  loadingScreen.addEventListener('click', () => {
+    if (waitingForClick) {
+      waitingForClick = false;
+      cdTagline.classList.add('hidden');
+      showScreen('letter');
+    }
+  });
+
+  /* ============================================================
+     ROTIERENDE SPRÜCHE UNTER DEM COUNTDOWN
+     Wechseln alle 3.5s mit Fade-Übergang
+
+     HIER ÄNDERN: Texte im taglines-Array
+     ============================================================ */
+  const taglines = [
+    "Sammle Gründe warum ich dich liebe...",
+    "Importiere peinliche Erinnerungen...",
+    "Lade gemeinsame Momente...",
+    "Bereite virtuellen Kuchen vor...",
+    "Suche nach den perfekten Worten...",
+    "Importiere Inside-Jokes...",
+    "Streue Konfetti vorbereiten...",
+    "Wische eine kleine Träne weg...",
+    "Lächle weil ich an dich denke...",
+    "Packe die schönsten Erinnerungen aus...",
+    "Verstecke das echte Geschenk...",
+    "Zähle die Tage bis Mitternacht...",
+    "Bereite etwas Besonderes vor...",
+    "Verschlüssele alle Geheimnisse...",
+  ];
+
+  const cdTagline = document.getElementById('countdown-tagline');
+  let taglineIdx = 0;
+
+  function rotateTagline() {
+    // Fade out, Text wechseln, Fade in
+    cdTagline.style.opacity = '0';
+    setTimeout(() => {
+      taglineIdx = (taglineIdx + 1) % taglines.length;
+      cdTagline.textContent = taglines[taglineIdx];
+      cdTagline.style.opacity = '1';
+    }, 500);
+  }
+
+  // Erster Spruch direkt setzen, dann alle 3.5s wechseln
+  cdTagline.textContent = taglines[0];
+  setInterval(rotateTagline, 3500);
+
+  /* ============================================================
+     SCREEN 1: LOADING (nur Countdown, kein Progressbar mehr)
+     ============================================================ */
+  // (alter Loading-Loop entfernt — wird nicht mehr gebraucht)
+
+  /* ============================================================
+     SCREEN 2: BRIEF
+     ============================================================ */
+  const envelope = document.getElementById('envelope');
+  const letterPaper = document.getElementById('letter-paper');
+  const envelopeHint = document.getElementById('envelope-hint');
+  const letterNext = document.getElementById('letter-next');
+
+  envelope.addEventListener('click', () => {
+    envelope.classList.add('opened');
+    envelopeHint.style.opacity = '0';
+    setTimeout(() => {
+      letterPaper.classList.add('visible');
+      envelope.style.opacity = '0.2';
+    }, 400);
+  });
+
+  letterNext.addEventListener('click', () => {
+    showScreen('notDone');
+  });
+
+  /* ============================================================
+     SCREEN 3: BUTTON ZUM MEMORY
+     ============================================================ */
+  document.getElementById('start-game').addEventListener('click', () => {
+    showScreen('memory');
+    initMemory();
+  });
+
+  /* ============================================================
+     SCREEN 4: MEMORY
+     ============================================================ */
+  function initMemory() {
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+
+    // Karten mischen (8 Paare = 16 Karten)
+    const cards = [];
+    cardPairs.forEach((pair) => {
+      cards.push({ id: pair.id, img: pair.img, caption: pair.caption, matched: false });
+      cards.push({ id: pair.id, img: pair.img, caption: pair.caption, matched: false });
+    });
+    cards.sort(() => Math.random() - 0.5);
+
+    let moves = 0;
+    let matched = 0;
+    let firstCard = null;
+    let secondCard = null;
+    let lockBoard = false;
+
+    function updateStats() {
+      document.getElementById('moves').textContent = moves;
+      document.getElementById('matched').textContent = matched;
+    }
+
+    cards.forEach(card => {
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.dataset.id = card.id;
+      el.innerHTML = `
+        <div class="face back">💕</div>
+        <div class="face front"><img src="${card.img}" alt="" loading="lazy"></div>
+      `;
+
+      el.addEventListener('click', () => {
+        if (lockBoard) return;
+        if (el.classList.contains('flipped')) return;
+        if (el.classList.contains('matched')) return;
+
+        el.classList.add('flipped');
+
+        if (!firstCard) {
+          firstCard = el;
+        } else {
+          secondCard = el;
+          moves++;
+          updateStats();
+          checkMatch();
+        }
+      });
+
+      board.appendChild(el);
+    });
+
+    function checkMatch() {
+      const isMatch = firstCard.dataset.id === secondCard.dataset.id;
+      if (isMatch) {
+        firstCard.classList.add('matched');
+        secondCard.classList.add('matched');
+        matched++;
+        updateStats();
+        reset();
+        if (matched === cardPairs.length) {
+          setTimeout(() => {
+            document.getElementById('final-moves').textContent = moves;
+            showScreen('finale');
+            launchConfetti();
+          }, 800);
+        }
+      } else {
+        lockBoard = true;
+        setTimeout(() => {
+          firstCard.classList.remove('flipped');
+          secondCard.classList.remove('flipped');
+          reset();
+        }, 1200);
+      }
+    }
+
+    function reset() {
+      [firstCard, secondCard] = [null, null];
+      lockBoard = false;
+    }
+
+    updateStats();
+  }
+
+  /* ============================================================
+     SCREEN 5: FINALE + CONFETTI
+     ============================================================ */
+  function launchConfetti() {
+    const colors = ['#ff6b9d', '#c084fc', '#ffd93d', '#6bcf7f', '#4d9fff'];
+    for (let i = 0; i < 100; i++) {
+      setTimeout(() => {
+        const el = document.createElement('div');
+        el.className = 'confetti';
+        el.style.left = Math.random() * 100 + 'vw';
+        el.style.top = '-20px';
+        el.style.background = colors[Math.floor(Math.random() * colors.length)];
+        el.style.animationDuration = (2 + Math.random() * 2) + 's';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+      }, i * 30);
+    }
+  }
+</script>
+</body>
+</html>
